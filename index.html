@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UID Anonymizer Tool</title>
+</head>
+<body>
+    <h1>UID Anonymizer Tool</h1>
+    <input type="file" id="fileInput" accept=".csv">
+    <button onclick="processFile()">Process File</button>
+    <a id="downloadLink" style="display:none;">Download Anonymized CSV</a>
+
+    <script>
+        async function sha256(str) {
+            const buffer = new TextEncoder("utf-8").encode(str);
+            const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+            return base32Encode(new Uint8Array(hashBuffer)).substring(0, 10);
+        }
+
+        function base32Encode(bytes) {
+           ';
+            let bits = '';
+            let base32 = '';
+
+            for (let byte of bytes) {
+                bits += byte.toString(2).padStart(8, '0');
+            }
+
+            for (let i = 0; i < bits.length; i += 5) {
+                const chunk = bits.substring(i, i + 5).padEnd(5, '0');
+                const index = parseInt(chunk, 2);
+                base32 += alphabet[index];
+            }
+
+            return base32;
+        }
+
+        async function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a CSV file first.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const csvContent = event.target.result;
+                const rows = csvContent.split('\n');
+                let output = "Original UID,Anonymized UID\n";
+
+                for (const row of rows) {
+                    const uid = row.trim();
+                    if (uid === "") continue;
+                    const anonymizedUID = await sha256(uid);
+                    output += `${uid},${anonymizedUID}\n`;
+                }
+
+                const blob = new Blob([output], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const downloadLink = document.getElementById('downloadLink');
+                downloadLink.href = url;
+                downloadLink.download = 'anonymized_uids.csv';
+                downloadLink.style.display = 'block';
+                downloadLink.textContent = 'Download Anonymized CSV';
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
